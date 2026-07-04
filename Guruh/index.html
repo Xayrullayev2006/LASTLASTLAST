@@ -19,7 +19,7 @@
   .group-flower-mini svg { width: 100%; height: 100%; overflow: visible; }
   .group-info h3 { margin: 0 0 5px; font-size: 15px; color: var(--ink); }
   .group-info p { margin: 0; font-size: 12px; color: var(--muted); }
-  /* Sizning ranglar palitrangiz va asosiy sozlamalar[cite: 1] */
+  
   :root{
     --bg-1:#0e1013; --bg-2:#181414; --card:#15181bcc; 
     --line:#2a2e33; --ink:#e9e6df; --muted:#8b9096; --gold:#c9a24a;
@@ -33,14 +33,12 @@
     height: 100vh; display: flex; flex-direction: column; overflow: hidden;
   }
 
-  /* Yuqori qism: Foydalanuvchi ma'lumoti */
   .header {
     text-align: center; padding: 20px 15px 5px; flex-shrink: 0;
   }
   .header h1 { font-size: 22px; margin: 0 0 5px; font-weight: 600; }
   .header .level-text { font-size: 14px; color: var(--gold); letter-spacing: .05em; }
 
-  /* Markaziy qism: Katta Gul indikatori[cite: 1] */
   .stage-container {
     flex-grow: 1; display: flex; flex-direction: column; 
     justify-content: center; align-items: center; position: relative;
@@ -54,7 +52,6 @@
     margin-top: -10px; font-size: 16px; font-weight: bold; color: var(--muted);
   }
 
-  /* Pastki qism: Top List (Leaderboard) */
   .leaderboard {
     height: 45vh; background: var(--card); border-top: 1px solid var(--line);
     border-radius: 24px 24px 0 0; padding: 20px; overflow-y: auto; flex-shrink: 0;
@@ -73,7 +70,6 @@
   .name { font-size: 15px; font-weight: 500; }
   .pts { font-weight: bold; color: var(--gold); font-size: 14px; }
   
-  /* Animatsiyalar[cite: 1] */
   .sway {
     transform-origin: 100px 200px; animation-name: sway;
     animation-timing-function: ease-in-out; animation-iteration-count: infinite;
@@ -104,7 +100,7 @@
     <div class="stage" id="main-flower"></div>
     <div class="status-label" id="flower-status">...</div>
   </div>
-<!-- Guruhning o'rtacha guli -->
+
   <div class="group-card">
     <div class="group-flower-mini" id="group-flower"></div>
     <div class="group-info">
@@ -112,6 +108,7 @@
       <p id="group-status-text">O'rtacha holat hisoblanmoqda...</p>
     </div>
   </div>
+  
   <div class="leaderboard">
     <div class="leaderboard-title">🏆 Guruhning eng aktivlari</div>
     <div id="top-list">
@@ -120,11 +117,10 @@
   </div>
 
 <script>
-// Telegram Web App API ni yoqish
+// Telegram Web App API
 const tg = window.Telegram.WebApp;
-tg.expand(); // Ilovani to'liq ekranga ochish
+tg.expand(); 
 
-/* ---------- Sizning 10 darajali konfiguratsiyangiz[cite: 1] ---------- */
 const LEVELS = [
   { lvl:1, label:"So'lgan", petal:"#171210", petal2:"#0c0908", stem:"#241a13", leaf:"#1c1712", droop:52, petals:5, petalSize:0.55, glow:0, sparkles:0, fallen:5, curl:1, swayAmp:2, swaySpeed:6.5 },
   { lvl:2, label:"Qurigan", petal:"#3a2418", petal2:"#241509", stem:"#3a2b1a", leaf:"#2c2415", droop:42, petals:6, petalSize:0.62, glow:0, sparkles:0, fallen:3, curl:.85, swayAmp:2.4, swaySpeed:5.8 },
@@ -138,7 +134,6 @@ const LEVELS = [
   { lvl:10, label:"A'lo — Atirgul", petal:"#ff2f75", petal2:"#e01259", stem:"#16a852", leaf:"#1ec25e", droop:0, petals:11, petalSize:1.2, glow:28, sparkles:7, fallen:0, curl:0, swayAmp:4.4, swaySpeed:2.9 }
 ];
 
-/* ---------- Gul chizish funksiyasi[cite: 1] ---------- */
 function petalPath(len, wid){
   return `M0,0 C ${-wid},${-len*0.35} ${-wid*0.7},${-len*0.85} 0,${-len} C ${wid*0.7},${-len*0.85} ${wid},${-len*0.35} 0,0 Z`;
 }
@@ -207,18 +202,6 @@ function buildFlowerSVG(cfg, uid){
   </svg>`;
 }
 
-// ----------------- Dastur mantiqi -----------------
-// Bu ma'lumotlar kelajakda Database'dan API orqali keladi
-const mockData = {
-  currentUser: { name: "Azizbek", pts: 45 },
-  topUsers: [
-    { name: "Sardor", pts: 120 },
-    { name: "Azizbek", pts: 45 },
-    { name: "Komiljon", pts: 12 },
-    { name: "Bekzod (Uxlab yotibdi)", pts: -5 }
-  ]
-};
-
 function getLevelByPts(pts) {
   if (pts >= 100) return 10;
   if (pts >= 80) return 9;
@@ -229,51 +212,75 @@ function getLevelByPts(pts) {
   if (pts >= 0) return 4;
   if (pts >= -10) return 3;
   if (pts >= -20) return 2;
-  return 1; // -20 dan past bo'lsa 1-daraja
+  return 1; 
 }
 
-function initApp() {
-  const userLevelIndex = getLevelByPts(mockData.currentUser.pts);
+// ----------------- YANGI QISM: Bazadan o'qish -----------------
+async function fetchData() {
+  const userId = tg.initDataUnsafe?.user?.id || 0;
+  const fallbackName = tg.initDataUnsafe?.user?.first_name || "Mehmon";
+
+  try {
+    const response = await fetch(`/api/bot?userId=${userId}`);
+    const data = await response.json();
+    
+    if (data.currentUser && data.currentUser.name !== "Mehmon") {
+        return data;
+    }
+  } catch(e) {
+    console.error("Xatolik:", e);
+  }
+  
+  return { currentUser: { name: fallbackName, pts: 0 }, topUsers: [] };
+}
+
+async function initApp() {
+  const realData = await fetchData();
+  
+  const userLevelIndex = getLevelByPts(realData.currentUser.pts);
   const cfg = LEVELS.find(l => l.lvl === userLevelIndex);
   
-  // Ekranga chiqarish
-  document.getElementById('user-name').innerText = tg.initDataUnsafe?.user?.first_name || mockData.currentUser.name;
+  document.getElementById('user-name').innerText = realData.currentUser.name;
   document.getElementById('user-level-num').innerText = cfg.lvl;
   document.getElementById('main-flower').innerHTML = buildFlowerSVG(cfg, cfg.lvl);
   document.getElementById('flower-status').innerText = cfg.label;
 
-  // Top listni to'ldirish
   const listContainer = document.getElementById('top-list');
-  mockData.topUsers.forEach((user, index) => {
+  listContainer.innerHTML = "";
+
+  if (realData.topUsers.length === 0) {
+      listContainer.innerHTML = "<p style='text-align:center; padding-top:20px; color:var(--muted)'>Sizning guruhda hali ma'lumot yo'q. Biror narsa yozing!</p>";
+  }
+
+  realData.topUsers.forEach((user, index) => {
     const userLvl = getLevelByPts(user.pts);
     const badge = userLvl === 10 ? '👑' : userLvl <= 2 ? '🥀' : '🌱';
     listContainer.innerHTML += `
-    
       <div class="list-item">
         <div class="user-info">
           <div class="rank">#${index + 1}</div>
           <div class="name">${user.name} ${badge}</div>
         </div>
-        <div class="pts">${user.pts} pts (Lvl ${userLvl})</div>
+        <div class="pts">${user.pts} pts</div>
       </div>
     `;
   });
+
+  if (realData.topUsers.length > 0) {
+      const totalPts = realData.topUsers.reduce((sum, user) => sum + user.pts, 0);
+      const avgPts = Math.floor(totalPts / realData.topUsers.length);
+      const groupLvl = getLevelByPts(avgPts);
+      const groupCfg = LEVELS.find(l => l.lvl === groupLvl);
+
+      document.getElementById('group-flower').innerHTML = buildFlowerSVG(groupCfg, 'group');
+      document.getElementById('group-status-text').innerText = `O'rtacha: ${avgPts} pts (${groupCfg.label})`;
+  } else {
+      document.getElementById('group-flower').innerHTML = buildFlowerSVG(LEVELS[0], 'group');
+      document.getElementById('group-status-text').innerText = `Hali aniqlanmadi`;
+  }
 }
 
 initApp();
-// Guruh o'rtacha ballini hisoblash
-  const allUsers = mockData.topUsers;
-  // Barcha pts larni bir-biriga qo'shamiz va odam soniga bo'lamiz
-  const totalPts = allUsers.reduce((sum, user) => sum + user.pts, 0);
-  const avgPts = Math.floor(totalPts / allUsers.length);
-  
-  // O'rtacha ballga mos darajani aniqlaymiz
-  const groupLvl = getLevelByPts(avgPts);
-  const groupCfg = LEVELS.find(l => l.lvl === groupLvl);
-
-  // Ekranga chiqarish ('group' id orqali ranglar aralashib ketmasligini ta'minlaymiz[cite: 1])
-  document.getElementById('group-flower').innerHTML = buildFlowerSVG(groupCfg, 'group');
-  document.getElementById('group-status-text').innerText = `O'rtacha: ${avgPts} pts (${groupCfg.label})`;
 </script>
 </body>
 </html>
